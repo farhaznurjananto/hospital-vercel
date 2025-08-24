@@ -18,7 +18,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
-// import { useSignOut } from '@/hooks/use-signout';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface iAppProps {
   name: string;
@@ -27,7 +28,30 @@ interface iAppProps {
 }
 
 export function UserDropdown({ name, email, image }: iAppProps) {
-  //   const handleSignOut = useSignOut();
+  const router = useRouter();
+  async function handleSignOut() {
+    try {
+      const res = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await res.json();
+
+      if (result.status === 'success') {
+        toast.success(result.message);
+        router.push('/login');
+      } else {
+        toast.error(result.message);
+      }
+    } catch (err) {
+      toast.error('An unexpected error occurred. Please try again.');
+      console.log(err);
+    }
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -61,13 +85,13 @@ export function UserDropdown({ name, email, image }: iAppProps) {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href={'/courses'}>
+            <Link href={'/admin/patients'}>
               <BookOpenIcon
                 size={16}
                 className="opacity-60"
                 aria-hidden="true"
               />
-              <span>Courses</span>
+              <span>Patients</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
@@ -82,8 +106,7 @@ export function UserDropdown({ name, email, image }: iAppProps) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
-          {/* <DropdownMenuItem onClick={handleSignOut}> */}
+        <DropdownMenuItem onClick={handleSignOut}>
           <LogOutIcon size={16} className="opacity-60" aria-hidden="true" />
           <span>Logout</span>
         </DropdownMenuItem>

@@ -22,22 +22,45 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-// import { authClient } from '@/lib/auth-client';
+import { authClient } from '@/lib/auth-client';
 import Link from 'next/link';
 import { HomeIcon, Tv2 } from 'lucide-react';
-// import { useSignOut } from '@/hooks/use-signout';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 export function NavUser() {
+  const router = useRouter();
   const { isMobile } = useSidebar();
-  // const { data: session, isPending } = authClient.useSession();
-  // const handleSignOut = useSignOut();
+  const { data: session, isPending } = authClient.useSession();
+  async function handleSignOut() {
+    try {
+      const res = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-  // if (isPending) {
-  //   return null;
-  // }
+      const result = await res.json();
+
+      if (result.status === 'success') {
+        toast.success(result.message);
+        router.push('/login');
+      } else {
+        toast.error(result.message);
+      }
+    } catch (err) {
+      toast.error('An unexpected error occurred. Please try again.');
+      console.log(err);
+    }
+  }
+
+  if (isPending) {
+    return null;
+  }
   return (
     <SidebarMenu>
-      {/* <SidebarMenuItem>
+      <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
@@ -120,9 +143,9 @@ export function NavUser() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={'admin/courses'}>
+                <Link href={'admin/patients'}>
                   <Tv2 />
-                  Courses
+                  Patients
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -133,7 +156,7 @@ export function NavUser() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </SidebarMenuItem> */}
+      </SidebarMenuItem>
     </SidebarMenu>
   );
 }

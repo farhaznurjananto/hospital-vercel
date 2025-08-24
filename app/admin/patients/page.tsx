@@ -1,6 +1,6 @@
-import DataTablePatients from "../_components/DataTablePatients";
+import DataTablePatients from '../_components/DataTablePatients';
 
-export default async function PatientsPage() {
+export default function PatientsPage() {
   return (
     <>
       <DataTablePatients />

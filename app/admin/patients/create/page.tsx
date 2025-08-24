@@ -26,22 +26,15 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  doctorOptions,
   patientSchema,
   PatientSchemaType,
   treatmentOptions,
 } from '@/lib/zodSchemas';
-import {
-  ArrowLeft,
-  CalendarIcon,
-  Loader2,
-  PlusIcon,
-  SparkleIcon,
-} from 'lucide-react';
+import { ArrowLeft, CalendarIcon, Loader2, PlusIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTransition } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useState, useTransition } from 'react';
+import { Resolver, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Popover,
@@ -51,38 +44,59 @@ import {
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
+import { Doctor } from '@/lib/types';
+import { toast } from 'sonner';
 
 export default function CreatePatientPage() {
   const [isPending, startPendingTransition] = useTransition();
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const router = useRouter();
 
   const form = useForm<PatientSchemaType>({
-    resolver: zodResolver(patientSchema),
+    resolver: zodResolver(patientSchema) as Resolver<PatientSchemaType>,
     defaultValues: {
       name: '',
       date_of_birth: new Date(),
       visit_date: new Date(),
       diagnosis: '',
       treatment: 'Medication',
-      doctor: 'Dr. Smith',
+      doctorId: '',
     },
   });
 
+  useEffect(() => {
+    fetch('/api/doctor', {
+      method: "GET"
+    })
+      .then((res) => res.json())
+      .then((data) => setDoctors(data.data as Doctor[]));
+  }, []);
+
   function onSubmit(values: PatientSchemaType) {
-    //   startPendingTransition(async () => {
-    //     const { data: result, error } = await tryCatch(CreateCourse(values));
-    //     if (error) {
-    //       toast.error('An unexpected error occurred. Please try again.');
-    //       return;
-    //     }
-    //     if (result.status === 'success') {
-    //       toast.success(result.message);
-    //       form.reset();
-    //       router.push('/admin/courses');
-    //     } else if (result.status === 'error') {
-    //       toast.error(result.message);
-    //     }
-    //   });
+    startPendingTransition(async () => {
+      try {
+        const res = await fetch('/api/patient', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(values),
+        });
+
+        const result = await res.json();
+
+        if (result.status === 'success') {
+          toast.success(result.message);
+          form.reset();
+          router.push('/admin/patients');
+        } else {
+          toast.error(result.message);
+        }
+      } catch (err) {
+        toast.error('An unexpected error occurred. Please try again.');
+        console.log(err);
+      }
+    });
   }
   return (
     <>
@@ -255,7 +269,7 @@ export default function CreatePatientPage() {
               {/* Doctor */}
               <FormField
                 control={form.control}
-                name="doctor"
+                name="doctorId"
                 render={({ field }) => (
                   <FormItem className="w-full">
                     <FormLabel>Doctor</FormLabel>
@@ -266,9 +280,9 @@ export default function CreatePatientPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {doctorOptions.map((doctor) => (
-                          <SelectItem key={doctor} value={doctor}>
-                            {doctor}
+                        {doctors.map((doctor) => (
+                          <SelectItem key={doctor.id} value={doctor.id}>
+                            {doctor.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

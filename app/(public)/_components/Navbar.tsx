@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Logo from '@/public/vercel.svg';
 import { ThemeToggle } from '@/components/ui/themeToggle';
-// import { authClient } from '@/lib/auth-client';
+import { authClient } from '@/lib/auth-client';
 import { buttonVariants } from '@/components/ui/button';
 import { UserDropdown } from './UserDropdown';
 
@@ -29,7 +29,7 @@ const navigationItems: navigationProps[] = [
 ];
 
 export function Navbar() {
-  //   const { data: session, isPending } = authClient.useSession();
+  const { data: session, isPending } = authClient.useSession();
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-[backdrop-filter]:background/60">
       <div className="container flex min-h-16 items-center mx-auto px-4 md:px-6 lg:px-8">
@@ -55,7 +55,7 @@ export function Navbar() {
           <div className="flex items-center space-x-4">
             <ThemeToggle />
 
-            {/* {isPending ? null : session ? (
+            {isPending ? null : session ? (
               <UserDropdown
                 email={session.user.email}
                 image={
@@ -69,18 +69,18 @@ export function Navbar() {
                 }
               />
             ) : (
-              <> */}
-            <Link
-              href={'/login'}
-              className={buttonVariants({ variant: 'secondary' })}
-            >
-              Login
-            </Link>
-            <Link href={'/login'} className={buttonVariants({})}>
-              Get Started
-            </Link>
-            {/* </>
-            )} */}
+              <>
+                <Link
+                  href={'/login'}
+                  className={buttonVariants({ variant: 'secondary' })}
+                >
+                  Login
+                </Link>
+                <Link href={'/login'} className={buttonVariants({})}>
+                  Get Started
+                </Link>
+              </>
+            )}
           </div>
         </nav>
       </div>

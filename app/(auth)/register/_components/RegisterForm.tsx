@@ -17,7 +17,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { userLoginSchema, UserLoginSchema } from '@/lib/zodSchemas';
+import { userRegisterSchema, UserRegisterSchema } from '@/lib/zodSchemas';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader, Send } from 'lucide-react';
@@ -27,28 +27,28 @@ import { useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
-export function LoginForm() {
+export function RegisterForm() {
   const router = useRouter();
   const [emailPending, startEmailTransition] = useTransition();
 
-  const form = useForm<UserLoginSchema>({
-    resolver: zodResolver(userLoginSchema),
+  const form = useForm<UserRegisterSchema>({
+    resolver: zodResolver(userRegisterSchema),
     defaultValues: {
+      name: '',
       email: '',
       password: '',
     },
   });
 
-  function onSubmit(values: UserLoginSchema) {
+  function onSubmit(values: UserRegisterSchema) {
     startEmailTransition(async () => {
       try {
-        const res = await fetch('/api/auth/login', {
+        const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(values),
-          credentials: 'include',
         });
 
         const result = await res.json();
@@ -56,7 +56,7 @@ export function LoginForm() {
         if (result.status === 'success') {
           toast.success(result.message);
           form.reset();
-          router.push('/admin');
+          router.push('/login');
         } else {
           toast.error(result.message);
         }
@@ -70,13 +70,29 @@ export function LoginForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xl">Welcome Back!</CardTitle>
-        <CardDescription>Login with your Email</CardDescription>
+        <CardTitle className="text-xl">Get Started!</CardTitle>
+        <CardDescription>Register with your Email</CardDescription>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-4">
         <Form {...form}>
           <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
+            <div className="grid gap-2">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <div className="grid gap-2">
               <FormField
                 control={form.control}
@@ -115,12 +131,12 @@ export function LoginForm() {
 
             <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
               <span className="relative z-10 bg-card px-2 text-muted-foreground">
-                Don&apos;t have an account?
+                Already have an account?
                 <Link
-                  href={'/register'}
+                  href={'/login'}
                   className="pl-1 font-semibold text-foreground hover:text-primary"
                 >
-                  Sign Up
+                  Sign In
                 </Link>
               </span>
             </div>
@@ -134,7 +150,7 @@ export function LoginForm() {
               ) : (
                 <>
                   <Send className="size-4" />
-                  Sign In
+                  Sign Up
                 </>
               )}
             </Button>

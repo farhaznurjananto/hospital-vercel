@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth';
-import { LoginForm } from './_components/LoginForm';
+import { RegisterForm } from './_components/RegisterForm';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
@@ -12,5 +12,5 @@ export default async function LoginPage() {
     return redirect('/');
   }
 
-  return <LoginForm />;
+  return <RegisterForm />;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { use, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -27,11 +27,13 @@ import {
   CircleAlertIcon,
   CircleXIcon,
   Columns3Icon,
+  Download,
   EllipsisIcon,
   FilterIcon,
   ListFilterIcon,
   PlusIcon,
   TrashIcon,
+  Upload,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -47,7 +49,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
@@ -56,12 +58,8 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuPortal,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -92,26 +90,19 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import Link from 'next/link';
-
-type Item = {
-  id: string;
-  name: string;
-  email: string;
-  location: string;
-  flag: string;
-  status: 'Active' | 'Inactive' | 'Pending';
-  balance: number;
-};
+import { Patient } from '@/lib/types';
+import { toast } from 'sonner';
+import { SectionCards } from '@/components/sidebar/section-cards';
 
 // Custom filter function for multi-column searching
-const multiColumnFilterFn: FilterFn<Item> = (row, columnId, filterValue) => {
+const multiColumnFilterFn: FilterFn<Patient> = (row, columnId, filterValue) => {
   const searchableRowContent =
-    `${row.original.name} ${row.original.email}`.toLowerCase();
+    `${row.original.name} ${row.original.doctor.name}`.toLowerCase();
   const searchTerm = (filterValue ?? '').toLowerCase();
   return searchableRowContent.includes(searchTerm);
 };
 
-const statusFilterFn: FilterFn<Item> = (
+const statusFilterFn: FilterFn<Patient> = (
   row,
   columnId,
   filterValue: string[]
@@ -121,7 +112,7 @@ const statusFilterFn: FilterFn<Item> = (
   return filterValue.includes(status);
 };
 
-const columns: ColumnDef<Item>[] = [
+const columns: ColumnDef<Patient>[] = [
   {
     id: 'select',
     header: ({ table }) => (
@@ -156,53 +147,71 @@ const columns: ColumnDef<Item>[] = [
     enableHiding: false,
   },
   {
-    header: 'Email',
-    accessorKey: 'email',
-    size: 220,
-  },
-  {
-    header: 'Location',
-    accessorKey: 'location',
-    cell: ({ row }) => (
-      <div>
-        <span className="text-lg leading-none">{row.original.flag}</span>{' '}
-        {row.getValue('location')}
-      </div>
-    ),
+    header: 'Date of Birth',
+    accessorKey: 'date_of_birth',
+    cell: ({ row }) => {
+      const date = new Date(row.getValue('date_of_birth'));
+      return (
+        <div className="font-medium">
+          {date.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+          })}
+        </div>
+      );
+    },
     size: 180,
   },
   {
-    header: 'Status',
-    accessorKey: 'status',
+    header: 'Visit Date',
+    accessorKey: 'visit_date',
+    cell: ({ row }) => {
+      const date = new Date(row.getValue('visit_date'));
+      return (
+        <div className="font-medium">
+          {date.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+          })}
+        </div>
+      );
+    },
+    size: 180,
+  },
+  {
+    header: 'Treatment',
+    accessorKey: 'treatment',
     cell: ({ row }) => (
       <Badge
         className={cn(
-          row.getValue('status') === 'Inactive' &&
+          row.getValue('treatment') === 'Inactive' &&
             'bg-muted-foreground/60 text-primary-foreground'
         )}
       >
-        {row.getValue('status')}
+        {row.getValue('treatment')}
       </Badge>
     ),
     size: 100,
     filterFn: statusFilterFn,
   },
   {
-    header: 'Performance',
-    accessorKey: 'performance',
-  },
-  {
-    header: 'Balance',
-    accessorKey: 'balance',
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue('balance'));
-      const formatted = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-      }).format(amount);
-      return formatted;
-    },
-    size: 120,
+    header: 'Doctor',
+    accessorFn: (row) => row.doctor?.name ?? 'N/A',
+    id: 'doctor',
+    cell: ({ row }) => (
+      <Badge
+        className={cn(
+          row.getValue('doctor') === 'Inactive' &&
+            'bg-muted-foreground/60 text-primary-foreground'
+        )}
+      >
+        {row.getValue('doctor')}
+      </Badge>
+    ),
+    size: 100,
+    filterFn: statusFilterFn,
   },
   {
     id: 'actions',
@@ -217,6 +226,8 @@ export default function DataTablePatients() {
   const id = useId();
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [countPatient, setCountPatient] = useState<number>(0);
+  const [countPatientToday, setCountPatientToday] = useState<number>(0);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -230,25 +241,49 @@ export default function DataTablePatients() {
     },
   ]);
 
-  const [data, setData] = useState<Item[]>([]);
-  useEffect(() => {
-    async function fetchPosts() {
-      const res = await fetch(
-        'https://raw.githubusercontent.com/origin-space/origin-images/refs/heads/main/users-01_fertyx.json'
-      );
-      const data = await res.json();
-      setData(data);
+  const [data, setData] = useState<Patient[]>([]);
+  async function fetchPatients() {
+    try {
+      const res = await fetch('/api/patient');
+      const result = await res.json();
+      if (result.status === 'success') {
+        setData(result.data);
+        setCountPatient(result.totalPatients);
+        setCountPatientToday(result.totalToday);
+      }
+    } catch (err) {
+      console.error(err);
     }
-    fetchPosts();
+  }
+
+  useEffect(() => {
+    fetchPatients();
   }, []);
 
-  const handleDeleteRows = () => {
+  const handleDeleteRows = async () => {
     const selectedRows = table.getSelectedRowModel().rows;
-    const updatedData = data.filter(
-      (item) => !selectedRows.some((row) => row.original.id === item.id)
-    );
-    setData(updatedData);
-    table.resetRowSelection();
+
+    const idsToDelete = selectedRows.map((row) => row.original.id);
+
+    try {
+      await Promise.all(
+        idsToDelete.map((id) =>
+          fetch(`/api/patient/${id}`, {
+            method: 'DELETE',
+          }).then((res) => res.json())
+        )
+      );
+
+      fetchPatients();
+
+      // setData((prev) => prev.filter((item) => !idsToDelete.includes(item.id)));
+
+      table.resetRowSelection();
+      toast.success('Selected patients deleted successfully');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete selected patients');
+    }
   };
 
   const table = useReactTable({
@@ -274,29 +309,33 @@ export default function DataTablePatients() {
 
   // Get unique status values
   const uniqueStatusValues = useMemo(() => {
-    const statusColumn = table.getColumn('status');
+    const statusColumn = table.getColumn('treatment');
 
     if (!statusColumn) return [];
 
     const values = Array.from(statusColumn.getFacetedUniqueValues().keys());
 
     return values.sort();
-  }, [table.getColumn('status')?.getFacetedUniqueValues()]);
+  }, [table.getColumn('treatment')?.getFacetedUniqueValues()]);
 
   // Get counts for each status
   const statusCounts = useMemo(() => {
-    const statusColumn = table.getColumn('status');
+    const statusColumn = table.getColumn('treatment');
     if (!statusColumn) return new Map();
     return statusColumn.getFacetedUniqueValues();
-  }, [table.getColumn('status')?.getFacetedUniqueValues()]);
+  }, [table.getColumn('treatment')?.getFacetedUniqueValues()]);
 
   const selectedStatuses = useMemo(() => {
-    const filterValue = table.getColumn('status')?.getFilterValue() as string[];
+    const filterValue = table
+      .getColumn('treatment')
+      ?.getFilterValue() as string[];
     return filterValue ?? [];
-  }, [table.getColumn('status')?.getFilterValue()]);
+  }, [table.getColumn('treatment')?.getFilterValue()]);
 
   const handleStatusChange = (checked: boolean, value: string) => {
-    const filterValue = table.getColumn('status')?.getFilterValue() as string[];
+    const filterValue = table
+      .getColumn('treatment')
+      ?.getFilterValue() as string[];
     const newFilterValue = filterValue ? [...filterValue] : [];
 
     if (checked) {
@@ -309,12 +348,84 @@ export default function DataTablePatients() {
     }
 
     table
-      .getColumn('status')
+      .getColumn('treatment')
       ?.setFilterValue(newFilterValue.length ? newFilterValue : undefined);
   };
 
+  const handleExport = async () => {
+    try {
+      const res = await fetch('/api/patient/batch', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'text/csv',
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to export CSV');
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'patients.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      alert('Gagal mengekspor CSV');
+    }
+  };
+
+  async function handleImport() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+
+    input.onchange = async (event: Event) => {
+      const target = event.target as HTMLInputElement;
+      if (!target.files || target.files.length === 0) return;
+
+      const file = target.files[0];
+
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        if (!Array.isArray(data)) {
+          toast.error('Invalid JSON format, expected an array of objects');
+          return;
+        }
+
+        const res = await fetch('/api/patient/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        const result = await res.json();
+
+        if (result.status === 'success') {
+          fetchPatients();
+          toast.success('Data imported successfully!');
+        } else {
+          toast.error(result.message);
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to import JSON');
+      }
+    };
+
+    input.click();
+  }
+
   return (
     <div className="space-y-4">
+      <SectionCards total={countPatient} today={countPatientToday} />
       {/* Filters */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -333,7 +444,7 @@ export default function DataTablePatients() {
               onChange={(e) =>
                 table.getColumn('name')?.setFilterValue(e.target.value)
               }
-              placeholder="Filter by name or email..."
+              placeholder="Filter by name or doctor..."
               type="text"
               aria-label="Filter by name or email"
             />
@@ -364,7 +475,7 @@ export default function DataTablePatients() {
                   size={16}
                   aria-hidden="true"
                 />
-                Status
+                Treatment
                 {selectedStatuses.length > 0 && (
                   <span className="bg-background text-muted-foreground/70 -me-1 inline-flex h-5 max-h-full items-center rounded border px-1 font-[inherit] text-[0.625rem] font-medium">
                     {selectedStatuses.length}
@@ -485,15 +596,31 @@ export default function DataTablePatients() {
               </AlertDialogContent>
             </AlertDialog>
           )}
+
+          <Button variant={'outline'} type="button" onClick={handleImport}>
+            <Upload className="-ms-1 opacity-60" size={16} aria-hidden="true" />
+            Import JSON
+          </Button>
+          <Button variant={'outline'} type="button" onClick={handleExport}>
+            <Download
+              className="-ms-1 opacity-60"
+              size={16}
+              aria-hidden="true"
+            />
+            Export CSV
+          </Button>
           {/* Add user button */}
-          <Button className="ml-auto" variant="outline">
+          <Link
+            className={buttonVariants({ variant: 'outline' })}
+            href={'/admin/patients/create'}
+          >
             <PlusIcon
               className="-ms-1 opacity-60"
               size={16}
               aria-hidden="true"
             />
-            Add user
-          </Button>
+            Add Patient
+          </Link>
         </div>
       </div>
 
@@ -710,38 +837,74 @@ export default function DataTablePatients() {
   );
 }
 
-function RowActions({ row }: { row: Row<Item> }) {
+function RowActions({ row }: { row: Row<Patient> }) {
+  const [open, setOpen] = useState(false);
+
+  const handleDeleteRow = async (id: string) => {
+    try {
+      const res = await fetch(`/api/patient/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete patient');
+
+      toast.success('Patient deleted successfully');
+      setOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete patient');
+    }
+  };
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <div className="flex justify-end">
-          <Button
-            size="icon"
-            variant="ghost"
-            className="shadow-none"
-            aria-label="Edit item"
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <div className="flex justify-end">
+            <Button size="icon" variant="ghost" className="shadow-none">
+              <EllipsisIcon size={16} />
+            </Button>
+          </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuGroup>
+            <DropdownMenuItem asChild>
+              <Link href={`/admin/patients/${row.original.id}/edit`}>
+                <span>Edit</span>
+                <DropdownMenuShortcut>⌘E</DropdownMenuShortcut>
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onClick={() => setOpen(true)}
           >
-            <EllipsisIcon size={16} aria-hidden="true" />
-          </Button>
-        </div>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link href={`/admin/patients/${row.id}/edit`}>
-              <span>Edit</span>
-              <DropdownMenuShortcut>⌘E</DropdownMenuShortcut>
-            </Link>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-destructive focus:text-destructive">
-          <Link href={`/admin/patients/${row.id}/delete`}>
             <span>Delete</span>
             <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
-          </Link>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete{' '}
+              <strong>{row.original.name}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setOpen(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={() => handleDeleteRow(row.original.id)}
+            >
+              Delete
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

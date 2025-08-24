@@ -26,22 +26,15 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  doctorOptions,
   patientSchema,
   PatientSchemaType,
   treatmentOptions,
 } from '@/lib/zodSchemas';
-import {
-  ArrowLeft,
-  CalendarIcon,
-  Loader2,
-  PlusIcon,
-  SparkleIcon,
-} from 'lucide-react';
+import { ArrowLeft, CalendarIcon, Loader2, PlusIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useTransition } from 'react';
-import { useForm } from 'react-hook-form';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState, useTransition } from 'react';
+import { Resolver, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Popover,
@@ -51,39 +44,91 @@ import {
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
+import { Doctor } from '@/lib/types';
+import { toast } from 'sonner';
 
-export default function EditPatientPage() {
+export default function EditPatientForm() {
+  const params = useParams();
+  const patientId = params.patientId;
+
   const [isPending, startPendingTransition] = useTransition();
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const router = useRouter();
+  const [patientData, setPatientData] = useState<PatientSchemaType | null>(
+    null
+  );
 
   const form = useForm<PatientSchemaType>({
-    resolver: zodResolver(patientSchema),
+    resolver: zodResolver(patientSchema) as Resolver<PatientSchemaType>,
     defaultValues: {
       name: '',
       date_of_birth: new Date(),
       visit_date: new Date(),
       diagnosis: '',
       treatment: 'Medication',
-      doctor: 'Dr. Smith',
+      doctorId: '',
     },
   });
 
+  useEffect(() => {
+    if (!patientId) return;
+
+    fetch(`/api/patient/${patientId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setPatientData(data.data);
+
+        form.reset({
+          name: data.data.name,
+          date_of_birth: new Date(data.data.date_of_birth),
+          visit_date: new Date(data.data.visit_date),
+          diagnosis: data.data.diagnosis,
+          treatment: data.data.treatment,
+          doctorId: data.data.doctorId,
+        });
+      })
+      .catch((err) => console.error('Failed to fetch patient:', err));
+  }, [patientId, form]);
+
+  useEffect(() => {
+    fetch('/api/doctor', {
+      method: 'GET',
+    })
+      .then((res) => res.json())
+      .then((data) => setDoctors(data.data as Doctor[]));
+  }, []);
+
   function onSubmit(values: PatientSchemaType) {
-    //   startPendingTransition(async () => {
-    //     const { data: result, error } = await tryCatch(CreateCourse(values));
-    //     if (error) {
-    //       toast.error('An unexpected error occurred. Please try again.');
-    //       return;
-    //     }
-    //     if (result.status === 'success') {
-    //       toast.success(result.message);
-    //       form.reset();
-    //       router.push('/admin/courses');
-    //     } else if (result.status === 'error') {
-    //       toast.error(result.message);
-    //     }
-    //   });
+    if (!patientId) {
+      toast.error('Patient ID is missing');
+      return;
+    }
+
+    startPendingTransition(async () => {
+      try {
+        const res = await fetch(`/api/patient/${patientId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(values),
+        });
+
+        const result = await res.json();
+
+        if (result.status === 'success') {
+          toast.success(result.message);
+          router.push('/admin/patients');
+        } else {
+          toast.error(result.message);
+        }
+      } catch (err) {
+        toast.error('An unexpected error occurred. Please try again.');
+        console.log(err);
+      }
+    });
   }
+
   return (
     <>
       <div className="flex items-center gap-4">
@@ -255,7 +300,7 @@ export default function EditPatientPage() {
               {/* Doctor */}
               <FormField
                 control={form.control}
-                name="doctor"
+                name="doctorId"
                 render={({ field }) => (
                   <FormItem className="w-full">
                     <FormLabel>Doctor</FormLabel>
@@ -266,9 +311,9 @@ export default function EditPatientPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {doctorOptions.map((doctor) => (
-                          <SelectItem key={doctor} value={doctor}>
-                            {doctor}
+                        {doctors.map((doctor) => (
+                          <SelectItem key={doctor.id} value={doctor.id}>
+                            {doctor.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
