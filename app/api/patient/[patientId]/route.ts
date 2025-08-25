@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 
-interface Params {
-  params: { patientId: string };
-}
-
-export async function DELETE(req: Request, { params }: Params) {
+// DELETE patient
+export async function DELETE(
+  req: Request,
+  { params }: { params: { patientId: string } }
+) {
   try {
     const session = await auth.api.getSession({ headers: req.headers });
     if (!session) {
@@ -16,7 +16,7 @@ export async function DELETE(req: Request, { params }: Params) {
       );
     }
 
-    const patientId = params.patientId;
+    const { patientId } = params;
 
     const patient = await prisma.patient.findUnique({
       where: { id: patientId },
@@ -46,8 +46,11 @@ export async function DELETE(req: Request, { params }: Params) {
   }
 }
 
-export async function GET(req: Request, { params }: Params) {
-  console.log(params.patientId);
+// GET patient by ID
+export async function GET(
+  req: Request,
+  { params }: { params: { patientId: string } }
+) {
   try {
     const session = await auth.api.getSession({ headers: req.headers });
     if (!session) {
@@ -57,7 +60,7 @@ export async function GET(req: Request, { params }: Params) {
       );
     }
 
-    const patientId = params.patientId;
+    const { patientId } = params;
 
     const patient = await prisma.patient.findUnique({
       where: { id: patientId },
@@ -92,7 +95,11 @@ export async function GET(req: Request, { params }: Params) {
   }
 }
 
-export async function PATCH(req: Request, { params }: Params) {
+// PATCH update patient
+export async function PATCH(
+  req: Request,
+  { params }: { params: { patientId: string } }
+) {
   try {
     const session = await auth.api.getSession({ headers: req.headers });
     if (!session) {
@@ -102,7 +109,7 @@ export async function PATCH(req: Request, { params }: Params) {
       );
     }
 
-    const patientId = params.patientId;
+    const { patientId } = params;
     const body = await req.json();
 
     const existingPatient = await prisma.patient.findUnique({
