@@ -36,13 +36,12 @@ export async function POST(req: Request) {
 
     const role = user.role ?? 'user';
 
-    // Buat response
     const response = NextResponse.json(
       { status: 'success', message: 'Login successfully' },
       { status: 201 }
     );
 
-    // Set cookie role di response
+
     response.cookies.set({
       name: 'role',
       value: role,

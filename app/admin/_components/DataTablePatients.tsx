@@ -95,7 +95,6 @@ import { Patient } from '@/lib/types';
 import { toast } from 'sonner';
 import { SectionCards } from '@/components/sidebar/section-cards';
 
-// Custom filter function for multi-column searching
 const multiColumnFilterFn: FilterFn<Patient> = (row, columnId, filterValue) => {
   const searchableRowContent =
     `${row.original.name} ${row.original.doctor.name}`.toLowerCase();
@@ -277,8 +276,6 @@ export default function DataTablePatients() {
 
       fetchPatients();
 
-      // setData((prev) => prev.filter((item) => !idsToDelete.includes(item.id)));
-
       table.resetRowSelection();
       toast.success('Selected patients deleted successfully');
     } catch (err) {
@@ -308,7 +305,6 @@ export default function DataTablePatients() {
     },
   });
 
-  // Get unique status values
   const uniqueStatusValues = useMemo(() => {
     const statusColumn = table.getColumn('treatment');
 
@@ -319,7 +315,6 @@ export default function DataTablePatients() {
     return values.sort();
   }, [table.getColumn('treatment')?.getFacetedUniqueValues()]);
 
-  // Get counts for each status
   const statusCounts = useMemo(() => {
     const statusColumn = table.getColumn('treatment');
     if (!statusColumn) return new Map();
@@ -646,7 +641,7 @@ export default function DataTablePatients() {
                           )}
                           onClick={header.column.getToggleSortingHandler()}
                           onKeyDown={(e) => {
-                            // Enhanced keyboard handling for sorting
+
                             if (
                               header.column.getCanSort() &&
                               (e.key === 'Enter' || e.key === ' ')

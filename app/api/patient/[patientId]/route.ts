@@ -4,7 +4,6 @@ import { auth } from '@/lib/auth';
 
 type Context = { params: Promise<{ patientId: string }> };
 
-// ============ GET patient ============
 export async function GET(req: NextRequest, { params }: Context) {
   try {
     const { patientId } = await params;
@@ -50,7 +49,6 @@ export async function GET(req: NextRequest, { params }: Context) {
   }
 }
 
-// ============ DELETE patient ============
 export async function DELETE(req: NextRequest, { params }: Context) {
   try {
     const { patientId } = await params;
@@ -91,7 +89,7 @@ export async function DELETE(req: NextRequest, { params }: Context) {
   }
 }
 
-// ============ PATCH (update) patient ============
+
 export async function PATCH(req: NextRequest, { params }: Context) {
   try {
     const { patientId } = await params;
