@@ -1,4 +1,3 @@
-import { SectionCards } from '@/components/sidebar/section-cards';
 import DataTablePatients from './_components/DataTablePatients';
 
 export default function AdminPage() {

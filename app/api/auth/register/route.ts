@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { userRegisterSchema } from '@/lib/zodSchemas';
-import { authClient } from '@/lib/auth-client';
 
 export async function POST(req: Request) {
   try {
