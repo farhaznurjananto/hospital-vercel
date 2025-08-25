@@ -1,13 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 
-// DELETE patient
-export async function DELETE(
-  req: Request,
-  { params }: { params: { patientId: string } }
-) {
+type Context = { params: Promise<{ patientId: string }> };
+
+// ============ GET patient ============
+export async function GET(req: NextRequest, { params }: Context) {
   try {
+    const { patientId } = await params;
+
     const session = await auth.api.getSession({ headers: req.headers });
     if (!session) {
       return NextResponse.json(
@@ -15,52 +16,6 @@ export async function DELETE(
         { status: 401 }
       );
     }
-
-    const { patientId } = params;
-
-    const patient = await prisma.patient.findUnique({
-      where: { id: patientId },
-    });
-
-    if (!patient) {
-      return NextResponse.json(
-        { status: 'error', message: 'Patient not found' },
-        { status: 404 }
-      );
-    }
-
-    await prisma.patient.delete({
-      where: { id: patientId },
-    });
-
-    return NextResponse.json(
-      { status: 'success', message: 'Patient deleted successfully' },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error('Error deleting patient:', error);
-    return NextResponse.json(
-      { status: 'error', message: 'Failed to delete patient' },
-      { status: 500 }
-    );
-  }
-}
-
-// GET patient by ID
-export async function GET(
-  req: Request,
-  { params }: { params: { patientId: string } }
-) {
-  try {
-    const session = await auth.api.getSession({ headers: req.headers });
-    if (!session) {
-      return NextResponse.json(
-        { status: 'error', message: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const { patientId } = params;
 
     const patient = await prisma.patient.findUnique({
       where: { id: patientId },
@@ -95,12 +50,11 @@ export async function GET(
   }
 }
 
-// PATCH update patient
-export async function PATCH(
-  req: Request,
-  { params }: { params: { patientId: string } }
-) {
+// ============ DELETE patient ============
+export async function DELETE(req: NextRequest, { params }: Context) {
   try {
+    const { patientId } = await params;
+
     const session = await auth.api.getSession({ headers: req.headers });
     if (!session) {
       return NextResponse.json(
@@ -109,7 +63,47 @@ export async function PATCH(
       );
     }
 
-    const { patientId } = params;
+    const patient = await prisma.patient.findUnique({
+      where: { id: patientId },
+    });
+
+    if (!patient) {
+      return NextResponse.json(
+        { status: 'error', message: 'Patient not found' },
+        { status: 404 }
+      );
+    }
+
+    await prisma.patient.delete({
+      where: { id: patientId },
+    });
+
+    return NextResponse.json(
+      { status: 'success', message: 'Patient deleted successfully' },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Error deleting patient:', error);
+    return NextResponse.json(
+      { status: 'error', message: 'Failed to delete patient' },
+      { status: 500 }
+    );
+  }
+}
+
+// ============ PATCH (update) patient ============
+export async function PATCH(req: NextRequest, { params }: Context) {
+  try {
+    const { patientId } = await params;
+
+    const session = await auth.api.getSession({ headers: req.headers });
+    if (!session) {
+      return NextResponse.json(
+        { status: 'error', message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
 
     const existingPatient = await prisma.patient.findUnique({
